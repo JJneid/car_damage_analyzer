@@ -13,6 +13,49 @@ LLAVA_CONFIG = {
     "model": "llava"
 }
 
+# Pre-staged results for testing
+PRESTAGED_RESULTS = {
+    "damage_assessment": """The damage is located on the side and rear of the car. It appears to be a significant impact, as evidenced by the crumpled metal panels and visible structural damage, which indicates that it could have been in a collision.
+
+The type of damage includes a combination of denting and crushing, with some parts of the car's side and rear compartments completely destroyed or heavily deformed. There might also be internal damage to the vehicle not visible from this angle.
+
+The damage is severe, as it has rendered the car essentially inoperable without extensive repairs or replacement of affected components.
+
+The repair is likely to be complex, given the extent of the damage and the fact that multiple parts of the car's bodywork are severely deformed. The structural integrity of the vehicle may have been compromised, which would require careful assessment and potential reinforcement before any cosmetic repairs could be undertaken.""",
+
+    "part_analysis": """The car damage appears to affect several parts of the vehicle, including:
+
+Front bumper and fender, which might be bent or cracked.
+Hood, which is visibly damaged and may require replacement or significant repair work.
+Windshield area, which could also have been impacted by the collision.
+The passenger side doors and possibly the windows might have suffered damage as well.
+Side mirrors may need to be checked for any potential damage not visible in this image.
+
+Given the extent of the frontal damage, it is likely that parts of the engine bay or interior components (such as airbags) could also have been damaged during the collision and might require complete replacement or thorough inspection to ensure safety and functionality.
+
+In addition to the visible damage, other areas that should be checked for related damage include:
+- Underneath the vehicle, especially around the engine bay, suspension system, and frame for any structural damage.
+- The brake lines and hydraulic lines might also have been damaged during the collision and would need to be inspected.
+- The vehicle's electrical system, including the battery, alternator, wiring harness, and connectors.
+- The fuel tank should be checked for potential damage that could lead to a fuel leak.
+- Lastly, the vehicle's tires and wheels should be examined for possible damage or alignment issues caused by the impact.""",
+
+    "repair_recommendations": """Repair methods:
+- Assess the structural integrity of the vehicle
+- Remove damaged parts
+- Assess for hidden damage
+- Consider paintless dent removal (PDR)
+- Repair or replace body panels
+- Replace damaged mechanical components as necessary
+- Address safety concerns
+
+The repair time could take several days to several weeks, depending on the complexity and availability of parts.
+
+Specialized tools and professional expertise will be required for frame alignment, dent removal, and mechanical component replacement.
+
+Safety concerns include the integrity of the car's frame and overall structural safety. Professional inspection is crucial before returning the vehicle to service."""
+}
+
 # Define default car damage assessment prompts
 CAR_DAMAGE_PROMPTS = {
     "damage_assessment": """Look at this car damage image and answer these questions:
@@ -78,10 +121,12 @@ def analyze_with_llava(image, prompt):
         st.error(f"Error calling LLaVA API: {str(e)}")
         return None
 
-def analyze_car_damage(image):
-    """Analyze car damage using LLaVA model."""
-    results = {}
+def analyze_car_damage(image, use_prestaged=True):
+    """Analyze car damage using LLaVA model or pre-staged results."""
+    if use_prestaged:
+        return PRESTAGED_RESULTS
     
+    results = {}
     for prompt_name, prompt_text in CAR_DAMAGE_PROMPTS.items():
         try:
             response = analyze_with_llava(image, prompt_text)
@@ -89,7 +134,6 @@ def analyze_car_damage(image):
                 results[prompt_name] = response
             else:
                 results[prompt_name] = "Analysis failed"
-            
         except Exception as e:
             st.error(f"Error in analysis: {str(e)}")
             results[prompt_name] = "Analysis failed"
@@ -122,6 +166,9 @@ def main():
     - Include close-ups of damage
     """)
     
+    # Add toggle for pre-staged results
+    use_prestaged = st.checkbox("Use pre-staged results", value=True)
+    
     # Add file uploader
     uploaded_files = st.file_uploader(
         "Upload damage photos",
@@ -151,8 +198,8 @@ def main():
                     st.image(image, use_column_width=True)
                 
                 with col2:
-                    with st.spinner("Analyzing damage..."):
-                        results = analyze_car_damage(image)
+                    with st.spinner("Analyzing damage..." if not use_prestaged else "Loading pre-staged results..."):
+                        results = analyze_car_damage(image, use_prestaged)
                         display_damage_analysis(results)
                 
                 st.markdown("---")
@@ -163,7 +210,7 @@ def main():
         report_data = []
         for i, file in enumerate(uploaded_files):
             image = Image.open(file)
-            results = analyze_car_damage(image)
+            results = analyze_car_damage(image, use_prestaged)
             
             report_data.append({
                 "Image": f"Image {i+1}",
